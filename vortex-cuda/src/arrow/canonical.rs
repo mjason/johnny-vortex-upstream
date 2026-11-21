@@ -895,7 +895,9 @@ pub(super) async fn export_arrow_validity_buffer(
             let BoolDataParts { bits, meta } = array.into_data().into_parts(len);
             let bitmap = ctx.ensure_on_device(bits).await?;
             let bitmap = export_arrow_bitmap(&bitmap, meta.offset(), len, arrow_offset, ctx)?;
-            // Keep nullable exports self-describing for consumers that require exact null counts.
+            if ctx.cuda_session().deferred_null_count() {
+                return Ok((Some(bitmap), -1));
+            }
             let null_count = count_arrow_validity_nulls(&bitmap, len, arrow_offset, ctx)?;
             Ok((Some(bitmap), null_count))
         }

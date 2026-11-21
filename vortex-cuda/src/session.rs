@@ -92,6 +92,7 @@ pub struct CudaSession {
     export_device_array: Arc<dyn ExportDeviceArray>,
     varbin_export_layout: VarBinExportLayout,
     dictionary_export: DictionaryExport,
+    deferred_null_count: bool,
     kernel_loader: Arc<KernelLoader>,
     stream_pool: Arc<VortexCudaStreamPool>,
     pinned_buffer_pool: Arc<PinnedByteBufferPool>,
@@ -115,6 +116,7 @@ impl CudaSession {
             export_device_array: Arc::new(CanonicalDeviceArrayExport),
             varbin_export_layout: VarBinExportLayout::default(),
             dictionary_export: DictionaryExport::default(),
+            deferred_null_count: false,
             stream_pool,
             pinned_buffer_pool,
         }
@@ -156,6 +158,19 @@ impl CudaSession {
     /// Returns the dictionary policy used for Arrow Device exports.
     pub fn dictionary_export(&self) -> DictionaryExport {
         self.dictionary_export
+    }
+
+    /// When enabled, export an unknown Arrow null count for mixed validity bitmaps.
+    ///
+    /// The bitmap remains device-resident. Consumers must accept an Arrow null count
+    /// of -1 and use the bitmap to determine row validity.
+    pub fn with_deferred_null_count(mut self, enabled: bool) -> Self {
+        self.deferred_null_count = enabled;
+        self
+    }
+
+    pub(crate) fn deferred_null_count(&self) -> bool {
+        self.deferred_null_count
     }
 
     /// Creates a default CUDA session using device 0, with all GPU array kernels preloaded.
